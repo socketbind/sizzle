@@ -51,16 +51,7 @@ func calculateCompleteUtilization(rootProcess *process.Process) float64 {
 		return 0
 	}
 
-	/*processName, err := rootProcess.Name()
-	if err != nil {
-		return 0
-	}
-
-	fmt.Printf("%s CPU: %f\n", processName, cpuPercent)*/
-
 	completeUtilization := cpuPercent
-
-
 
 	children, _ := rootProcess.Children()
 
