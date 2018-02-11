@@ -9,35 +9,9 @@ import (
 	"time"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
-	"io"
 	"github.com/faiface/beep/speaker"
 )
 
-type ReadableClosableBytes struct {
-	s        []byte
-	i        int64 // current reading index
-	prevRune int   // index of previous rune; or < 0
-}
-
-func (r *ReadableClosableBytes) Read(b []byte) (n int, err error) {
-	if r.i >= int64(len(r.s)) {
-		return 0, io.EOF
-	}
-	r.prevRune = -1
-	n = copy(b, r.s[r.i:])
-	r.i += int64(n)
-	return
-}
-
-func (r *ReadableClosableBytes) Close() error {
-	return nil
-}
-
-func openAsset(name string) *ReadableClosableBytes {
-	asset, err := Asset(name)
-	fatalIfFailed(err)
-	return &ReadableClosableBytes{ s: asset, i: 0, prevRune: -1 }
-}
 
 func fatalIfFailed(err error) {
 	if err != nil {
@@ -64,7 +38,7 @@ func calculateCompleteUtilization(rootProcess *process.Process) float64 {
 	return completeUtilization
 }
 
-func watchProcess(pid int, done chan bool, effect *beep.StreamSeekCloser, format *beep.Format) {
+func watchProcess(pid int, done chan bool, effect *beep.Streamer, format *beep.Format) {
 	watchedProcess, err := process.NewProcess(int32(pid))
 	fatalIfFailed(err)
 
@@ -108,7 +82,9 @@ func main() {
 
 		done := make(chan bool, 1)
 
-		go watchProcess(cmd.Process.Pid, done, &soundEffect, &format)
+		loopedEffect := InfiniteLoop(soundEffect)
+
+		go watchProcess(cmd.Process.Pid, done, &loopedEffect, &format)
 
 		cmd.Wait()
 
