@@ -12,7 +12,7 @@ import (
 	"github.com/faiface/beep/effects"
 )
 
-const maxVolume = 4.0
+const maxVolume = 8 // 2^3
 
 func fatalIfFailed(err error) {
 	if err != nil {
@@ -44,7 +44,7 @@ func watchProcess(pid int, done chan interface{}, effectBuffer *beep.Buffer) {
 	fatalIfFailed(err)
 
 	streamer := InfiniteLoop(effectBuffer.Streamer(0, effectBuffer.Len()))
-	varyingSoundEffect := effects.Volume{ Streamer: streamer, Base: 2, Volume: 0, Silent: false }
+	varyingSoundEffect := effects.Volume{ Streamer: streamer, Base: 1, Volume: 1, Silent: false }
 
 	speaker.Init(effectBuffer.Format().SampleRate, effectBuffer.Format().SampleRate.N(time.Second/10))
 	speaker.Play(&varyingSoundEffect)
@@ -66,10 +66,10 @@ func watchProcess(pid int, done chan interface{}, effectBuffer *beep.Buffer) {
 			maxUtilization = utilization
 		}
 
-		newVolume := (utilization / maxUtilization) * maxVolume
+		newVolume := 1.0 + ((utilization / maxUtilization) * maxVolume)
 
 		speaker.Lock()
-		varyingSoundEffect.Volume = newVolume
+		varyingSoundEffect.Base = newVolume
 		speaker.Unlock()
 	}
 }
