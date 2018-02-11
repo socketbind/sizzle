@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/shirou/gopsutil/process"
 	"os"
 	"os/exec"
@@ -10,8 +9,10 @@ import (
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/wav"
+	"github.com/faiface/beep/effects"
 )
 
+const maxVolume = 4.0
 
 func fatalIfFailed(err error) {
 	if err != nil {
@@ -38,19 +39,21 @@ func calculateCompleteUtilization(rootProcess *process.Process) float64 {
 	return completeUtilization
 }
 
-func watchProcess(pid int, done chan bool, effect *beep.Streamer, format *beep.Format) {
+func watchProcess(pid int, done chan interface{}, effectBuffer *beep.Buffer) {
 	watchedProcess, err := process.NewProcess(int32(pid))
 	fatalIfFailed(err)
 
+	streamer := InfiniteLoop(effectBuffer.Streamer(0, effectBuffer.Len()))
+	varyingSoundEffect := effects.Volume{ Streamer: streamer, Base: 2, Volume: 0, Silent: false }
+
+	speaker.Init(effectBuffer.Format().SampleRate, effectBuffer.Format().SampleRate.N(time.Second/10))
+	speaker.Play(&varyingSoundEffect)
+
+	maxUtilization := 1.0
+
 	shouldRun := true
-
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-
-	speaker.Play(*effect)
-
 	for shouldRun {
 		utilization := calculateCompleteUtilization(watchedProcess)
-		fmt.Printf("Complete utilization: %f\n", utilization)
 
 		select {
 			case <- done:
@@ -58,6 +61,16 @@ func watchProcess(pid int, done chan bool, effect *beep.Streamer, format *beep.F
 			default:
 				time.Sleep(1000 * time.Millisecond)
 		}
+
+		if maxUtilization == 0.0 || maxUtilization < utilization {
+			maxUtilization = utilization
+		}
+
+		newVolume := (utilization / maxUtilization) * maxVolume
+
+		speaker.Lock()
+		varyingSoundEffect.Volume = newVolume
+		speaker.Unlock()
 	}
 }
 
@@ -78,17 +91,18 @@ func main() {
 		soundEffect, format, err := wav.Decode(openAsset("data/sizzle.wav"))
 		fatalIfFailed(err)
 
-		defer soundEffect.Close()
+		effectBuffer := beep.NewBuffer(format)
+		effectBuffer.Append(soundEffect)
 
-		done := make(chan bool, 1)
+		soundEffect.Close()
 
-		loopedEffect := InfiniteLoop(soundEffect)
+		done := make(chan interface{}, 1)
 
-		go watchProcess(cmd.Process.Pid, done, &loopedEffect, &format)
+		go watchProcess(cmd.Process.Pid, done, effectBuffer)
 
 		cmd.Wait()
 
-		done <- true
+		done <- nil
 	} else {
 		log.Fatal("Please specify a program")
 	}

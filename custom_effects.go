@@ -1,9 +1,12 @@
 package main
 
-import "github.com/faiface/beep"
+import (
+	"github.com/faiface/beep"
+)
 
 type inifiteLoop struct {
-	s       beep.StreamSeeker
+	s      beep.StreamSeeker
+	origin int
 }
 
 func (l *inifiteLoop) Stream(samples [][2]float64) (n int, ok bool) {
@@ -31,6 +34,6 @@ func (l *inifiteLoop) Err() error {
 
 func InfiniteLoop(s beep.StreamSeeker) beep.Streamer {
 	return &inifiteLoop{
-		s: s,
+		s:      s,
 	}
 }
