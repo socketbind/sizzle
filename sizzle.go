@@ -8,8 +8,8 @@ import (
 	"log"
 	"time"
 	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
 )
 
 
@@ -75,7 +75,7 @@ func main() {
 		err := cmd.Start()
 		fatalIfFailed(err)
 
-		soundEffect, format, err := mp3.Decode(openAsset("data/sizzle.mp3"))
+		soundEffect, format, err := wav.Decode(openAsset("data/sizzle.wav"))
 		fatalIfFailed(err)
 
 		defer soundEffect.Close()
